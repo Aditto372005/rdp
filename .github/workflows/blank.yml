@@ -1,0 +1,28 @@
+name: RDP via Docker & Ngrok
+
+on: push
+
+jobs:
+  run-rdp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Docker (if needed)
+        run: sudo apt-get update && sudo apt-get install -y docker.io
+
+      - name: Run XRDP Docker Container
+        run: docker run -d --name rdp-container -p 3389:3389 --restart always danielguerra/ubuntu-xrdp
+
+      - name: Install Ngrok
+        run: |
+          wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-linux-amd64.zip
+          unzip ngrok-stable-linux-amd64.zip
+          sudo mv ngrok /usr/local/bin/
+
+      - name: Authenticate Ngrok
+        run: ngrok authtoken ${{ secrets.2s7ZovbOW1DP41IYm2NcemUEFGQ_4Y2kdEDqhFiFKdtWGBLjS }}
+
+      - name: Start Ngrok TCP Tunnel for RDP
+        run: ngrok tcp 3389 > /dev/null &
+
+      - name: Display Ngrok URL
+        run: sleep 5 && curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'
