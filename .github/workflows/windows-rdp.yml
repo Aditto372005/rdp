@@ -1,0 +1,37 @@
+name: Windows RDP via Docker & ngrok
+
+on: push
+
+jobs:
+  rdp_container:
+    runs-on: windows-latest
+
+    steps:
+      - name: Install Docker
+        run: |
+          choco install docker-cli
+          Start-Service docker
+          docker --version
+
+      - name: Pull Windows Image
+        run: docker pull mcr.microsoft.com/windows:20H2
+
+      - name: Run Windows Container
+        run: docker run -d --name win_rdp -p 3389:3389 mcr.microsoft.com/windows:20H2
+
+      - name: Enable RDP inside Container
+        run: |
+          docker exec -it win_rdp powershell Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
+          docker exec -it win_rdp powershell Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+      - name: Install ngrok
+        run: |
+          Invoke-WebRequest -Uri "https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip" -OutFile "ngrok.zip"
+          Expand-Archive -Path ngrok.zip -DestinationPath .
+          .\ngrok\ngrok.exe authtoken 2s7ZovbOW1DP41IYm2NcemUEFGQ_4Y2kdEDqhFiFKdtWGBLjS
+
+      - name: Start ngrok for RDP
+        run: .\ngrok\ngrok.exe tcp 3389
+
+      - name: Get ngrok Public Address
+        run: curl http://127.0.0.1:4040/api/tunnels
